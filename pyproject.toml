@@ -1,6 +1,6 @@
 [project]
 name = "malaclyde-crawler"
-version = "0.1.1"
+version = "0.1.0"
 description = "GitHub-aware web crawler with 5 operation modes, adaptive research, and LLM-friendly structured output"
 readme = "README.md"
 license = { file = "LICENSE" }
