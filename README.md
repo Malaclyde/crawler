@@ -393,6 +393,48 @@ All limits bypassed with `--force-large`. Binary protection bypassed with `--for
 | 1 | Expected failure (binary detected, size exceeded, usage error) |
 | 2 | Unexpected error (network failure, exception) |
 
+## OpenCode Integration
+
+This tool is designed to be used as a custom tool in [OpenCode](https://opencode.ai), an agentic coding harness. The tool definition lives in `crawler.ts` and can be installed in two ways:
+
+### Project-Local (recommended for development)
+
+Place `crawler.ts` in your project's `.opencode/tools/` directory:
+
+```bash
+cp crawler.ts .opencode/tools/crawler.ts
+```
+
+The LLM will discover it automatically when opencode runs in the project directory.
+
+### Global (available in all projects)
+
+Place `crawler.ts` in the global opencode tools directory:
+
+```bash
+cp crawler.ts ~/.config/opencode/tools/crawler.ts
+```
+
+### How It Works
+
+The TypeScript tool definition shells out to `python3 -m crawler` as a subprocess. The Python package must be installed in the environment:
+
+```bash
+pip install malaclyde-crawler
+```
+
+Alternatively, the TS script can be extended to auto-bootstrap a virtual environment on first use (see `crawler.ts` for details).
+
+Once installed, the LLM can call the tool with any of the five modes:
+
+```
+Crawl a repo:       { mode: "crawl", url: "https://github.com/user/repo" }
+Fetch raw file:     { mode: "fetch", url: "https://raw.githubusercontent.com/..." }
+Download to disk:   { mode: "download", url: "...", output: "/tmp/file" }
+Deep crawl site:    { mode: "site", url: "https://docs.example.com", max_depth: 2 }
+Research question:  { mode: "research", url: "https://docs.python.org/3/", query: "async event loop" }
+```
+
 ## Testing
 
 ```bash
