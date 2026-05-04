@@ -1,4 +1,88 @@
 import { tool } from "@opencode-ai/plugin"
+import path from "path"
+import os from "os"
+import fs from "fs"
+
+const VENV_DIR = path.join(os.homedir(), ".cache", "opencode", "crawler-venv")
+const PYTHON = path.join(VENV_DIR, "bin", "python3")
+
+// Ensure cache directory exists
+try { fs.mkdirSync(path.join(os.homedir(), ".cache", "opencode"), { recursive: true }) } catch {}
+
+// Resolve system python3 — Bun may not inherit pyenv PATH
+function findSystemPython(): string {
+  const pyenvRoot = path.join(os.homedir(), ".pyenv", "versions")
+  if (fs.existsSync(pyenvRoot)) {
+    const versions = fs.readdirSync(pyenvRoot)
+      .filter(v => /^\d/.test(v))
+      .sort((a, b) => {
+        const pa = a.split(".").map(Number)
+        const pb = b.split(".").map(Number)
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+          const da = pa[i] || 0, db = pb[i] || 0
+          if (da !== db) return db - da
+        }
+        return 0
+      })
+    if (versions.length > 0) {
+      return path.join(pyenvRoot, versions[0], "bin", "python3")
+    }
+  }
+  const candidates = [
+    "/usr/bin/python3",
+    "/usr/local/bin/python3",
+    "/opt/homebrew/bin/python3",
+  ]
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c
+  }
+  return path.join(os.homedir(), ".pyenv", "shims", "python3")
+}
+const SYSTEM_PYTHON = findSystemPython()
+
+async function ensureVenv(): Promise<string | null> {
+  if (!fs.existsSync(PYTHON)) {
+    const venvResult = await Bun.$`${SYSTEM_PYTHON} -m venv ${VENV_DIR}`.quiet().nothrow()
+    if (venvResult.exitCode !== 0) {
+      return `venv creation failed (exit ${venvResult.exitCode}): ${venvResult.stderr.toString().trim()}`
+    }
+  }
+
+  const pipResult = await Bun.$`${PYTHON} -m pip install --no-cache-dir malaclyde-crawler[research]`.quiet().nothrow()
+  if (pipResult.exitCode !== 0) {
+    return `pip install failed (exit ${pipResult.exitCode}): ${pipResult.stderr.toString().trim()}`
+  }
+  return null
+}
+
+async function runCrawler(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  try {
+    const result = await Bun.$`${PYTHON} -m crawler ${args}`.quiet().nothrow()
+    return {
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+      exitCode: result.exitCode ?? 1,
+    }
+  } catch (e) {
+    return { stdout: "", stderr: String(e), exitCode: 1 }
+  }
+}
+
+function buildArgs(args: any): string[] {
+  const cmd = [args.mode, args.url]
+  if (args.output) cmd.push("-o", args.output)
+  if (args.query) cmd.push("--query", args.query)
+  if (args.selector) cmd.push("--selector", args.selector)
+  if (args.cache) cmd.push("--cache")
+  if (args.force_large) cmd.push("--force-large")
+  if (args.force_binary) cmd.push("--force-binary")
+  if (args.skip_preformatting) cmd.push("--skip-preformatting")
+  if (typeof args.max_depth === "number" && args.max_depth !== 2) cmd.push("--max-depth", String(args.max_depth))
+  if (typeof args.max_pages === "number" && args.max_pages !== 50) cmd.push("--max-pages", String(args.max_pages))
+  if (typeof args.confidence === "number" && args.confidence !== 0.7) cmd.push("--confidence", String(args.confidence))
+  if (args.strategy && args.strategy !== "statistical") cmd.push("--strategy", args.strategy)
+  return cmd
+}
 
 export default tool({
   description: `Crawl, fetch, download, site-crawl, or research a URL.
@@ -59,31 +143,27 @@ EXAMPLES:
     strategy: tool.schema.string().default("statistical").describe("Research strategy: statistical (fast, term-frequency) or embedding (semantic, local model)"),
   },
   async execute(args, context) {
-    const cmd = ["python3", "-m", "crawler", args.mode, args.url]
-    if (args.output) cmd.push("-o", args.output)
-    if (args.query) cmd.push("--query", args.query)
-    if (args.selector) cmd.push("--selector", args.selector)
-    if (args.cache) cmd.push("--cache")
-    if (args.force_large) cmd.push("--force-large")
-    if (args.force_binary) cmd.push("--force-binary")
-    if (args.skip_preformatting) cmd.push("--skip-preformatting")
-    if (args.max_depth !== 2) cmd.push("--max-depth", String(args.max_depth))
-    if (args.max_pages !== 50) cmd.push("--max-pages", String(args.max_pages))
-    if (args.confidence !== 0.7) cmd.push("--confidence", String(args.confidence))
-    if (args.strategy !== "statistical") cmd.push("--strategy", args.strategy)
+    const crawlerArgs = buildArgs(args)
 
-    const proc = Bun.spawn(cmd)
-    const stdout = await new Response(proc.stdout).text()
-    const stderr = await new Response(proc.stderr).text()
+    let result = await runCrawler(crawlerArgs)
 
-    if (proc.exitCode !== 0) {
-      return `Error (exit ${proc.exitCode}): ${stderr}`
+    if (result.exitCode !== 0) {
+      const err = await ensureVenv()
+      if (err) {
+        // Even if venv already existed, pip install might have failed
+        return `Error setting up venv at ${VENV_DIR}: ${err}`
+      }
+      result = await runCrawler(crawlerArgs)
+    }
+
+    if (result.exitCode !== 0) {
+      return `Error (exit ${result.exitCode}): ${result.stderr}`
     }
 
     if (args.mode === "download") {
       return `File saved to ${args.output}`
     }
 
-    return stdout
+    return result.stdout
   },
 })

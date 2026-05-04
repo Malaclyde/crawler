@@ -22,17 +22,35 @@ A specialized web crawler that understands GitHub's structure and extracts clean
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+# From PyPI (recommended)
+pip install malaclyde-crawler
+
+# With research extras (sentence-transformers for embedding strategy)
+pip install "malaclyde-crawler[research]"
 ```
 
-Or manually:
+Or from source:
 
 ```bash
-pip install pydantic pytest pytest-asyncio
-pip install -e ./crawling/crawl4ai
-pip install -e .                            # install the crawler package
-pip install -e ".[research]"                # with sentence-transformers for embedding strategy
+pip install -e .
+pip install -e ".[research]"                # with sentence-transformers
 ```
+
+## OpenCode Tool Setup
+
+To use this crawler as a tool inside [OpenCode](https://opencode.ai), copy the tool definition file:
+
+```bash
+cp crawler.ts ~/.config/opencode/tools/crawler.ts
+```
+
+On the first call within an opencode session, the tool will:
+
+1. Create a Python virtual environment at `~/.cache/opencode/crawler-venv/`
+2. Install `malaclyde-crawler` (with research extras) into it via pip
+3. Run the requested crawl
+
+This bootstrap takes ~30-60 seconds on the first call (due to downloading dependencies like PyTorch). Subsequent calls use the cached venv and complete normally. The venv is entirely isolated from your system Python — nothing is installed globally.
 
 ## Usage
 
