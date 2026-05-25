@@ -18,7 +18,7 @@ A specialized web crawler that understands GitHub's structure and extracts clean
 - **Caching**: `--cache` flag enables persistent cache for faster repeat crawls
 - **Metadata Extraction**: Stars, forks, watchers, open issues/PRs, languages with percentages, license from LICENSE file, topics
 - **OpenCode Compatible**: Exposed as a custom tool via `opencode/crawler.ts`
-- **Hermes Plugin**: Installable via `hermes plugins install Malaclyde/crawler` — provides `crawler_crawl`, `crawler_site`, `crawler_research`, and `crawler_fetch` tools
+- **Hermes Plugin**: Installable via `hermes plugins install Malaclyde/crawler` — provides `crawler_crawl`, `crawler_site`, `crawler_research`, `crawler_fetch`, and `crawler_download` tools
 
 ## Installation
 
@@ -64,6 +64,7 @@ pip install malaclyde-crawler
 | `crawler_site` | Deep crawl an entire domain | `url` (req), `max_depth`, `max_pages`, `query` |
 | `crawler_research` | Adaptive crawl, stops when confident | `url` (req), `query` (req), `max_pages` |
 | `crawler_fetch` | Raw HTTP fetch | `url` (req) |
+| `crawler_download` | Download file to disk | `url` (req), `force_large` |
 
 ## OpenCode Tool Setup
 
