@@ -17,7 +17,8 @@ A specialized web crawler that understands GitHub's structure and extracts clean
 - **Size & Binary Safety**: Automatic protection against large files (>15KB clipped, >1MB rejected) and binary content (detected via HEAD request + extension)
 - **Caching**: `--cache` flag enables persistent cache for faster repeat crawls
 - **Metadata Extraction**: Stars, forks, watchers, open issues/PRs, languages with percentages, license from LICENSE file, topics
-- **OpenCode Compatible**: Exposed as a custom tool via `.opencode/tools/crawler.ts`
+- **OpenCode Compatible**: Exposed as a custom tool via `opencode/crawler.ts`
+- **Hermes Plugin**: Installable via `hermes plugins install Malaclyde/crawler` — provides `crawler_crawl`, `crawler_site`, `crawler_research`, and `crawler_fetch` tools
 
 ## Installation
 
@@ -36,12 +37,40 @@ pip install -e .
 pip install -e ".[research]"                # with sentence-transformers
 ```
 
-## OpenCode Tool Setup
+## Hermes Plugin
 
-To use this crawler as a tool inside [OpenCode](https://opencode.ai), copy the tool definition file:
+This repo is installable as a Hermes plugin:
 
 ```bash
-cp crawler.ts ~/.config/opencode/tools/crawler.ts
+hermes plugins install Malaclyde/crawler
+```
+
+Or manually:
+```bash
+cp -r crawler ~/.hermes/plugins/crawler
+```
+
+### Prerequisites
+
+```bash
+pip install malaclyde-crawler
+```
+
+### Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `crawler_crawl` | Single page extraction with BM25 filtering | `url` (req), `query`, `selector` |
+| `crawler_site` | Deep crawl an entire domain | `url` (req), `max_depth`, `max_pages`, `query` |
+| `crawler_research` | Adaptive crawl, stops when confident | `url` (req), `query` (req), `max_pages` |
+| `crawler_fetch` | Raw HTTP fetch | `url` (req) |
+
+## OpenCode Tool Setup
+
+To use this crawler as a tool inside OpenCode, copy the tool definition file:
+
+```bash
+cp opencode/crawler.ts ~/.config/opencode/tools/crawler.ts
 ```
 
 On the first call within an opencode session, the tool will:

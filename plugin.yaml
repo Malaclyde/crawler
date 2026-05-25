@@ -1,0 +1,3 @@
+name: crawler
+version: "1.0.0"
+description: "GitHub-aware web crawler — extract clean markdown from repos, docs, and websites"
