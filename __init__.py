@@ -2,6 +2,7 @@
 import json
 import logging
 import subprocess
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,18 @@ def register(ctx):
                 "required": ["url"],
             },
         },
+        {
+            "name": "crawler_download",
+            "description": "Download a file to disk. Saves to a temp directory and returns the local path.",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to download"},
+                    "force_large": {"type": "boolean", "description": "Bypass 1MB size limit"},
+                },
+                "required": ["url"],
+            },
+        },
     ]
 
     for t in tools:
@@ -85,11 +98,18 @@ def _run_crawler(mode, params):
     url = params.get("url", "")
     cmd = ["python3", "-m", "crawler", cli_mode, url]
 
+    # Auto-generate output path for download mode
+    if cli_mode == "download":
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".download")
+        tmp.close()
+        cmd.extend(["-o", tmp.name])
+
     flag_map = {
         "crawler_crawl": [("query", "--query"), ("selector", "--selector")],
         "crawler_site": [("query", "--query"), ("max_depth", "--max-depth"), ("max_pages", "--max-pages")],
         "crawler_research": [("query", "--query"), ("max_pages", "--max-pages")],
         "crawler_fetch": [],
+        "crawler_download": [("force_large", "--force-large")],
     }
 
     for param_key, flag in flag_map.get(mode, []):
